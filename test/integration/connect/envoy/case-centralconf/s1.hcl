@@ -8,6 +8,11 @@ services {
           {
             destination_name = "s2"
             local_bind_port = 5000
+            config {
+              load_balancer {
+                policy = "random"
+              }
+            }
           }
         ]
       }

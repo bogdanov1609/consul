@@ -1,10 +1,12 @@
 package xds
 
 import (
-	"github.com/hashicorp/consul/lib"
+	"fmt"
 	"strings"
 
+	envoy "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	"github.com/hashicorp/consul/agent/structs"
+	"github.com/hashicorp/consul/lib"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -160,6 +162,34 @@ type UpstreamConfig struct {
 	// Limits are the set of limits that are applied to the proxy for a specific upstream of a
 	// service instance.
 	Limits UpstreamLimits `mapstructure:"limits"`
+
+	// LoadBalancer configuration for the envoy.Cluster
+	LoadBalancer LoadBalancer `mapstructure:"load_balancer"`
+}
+
+type LoadBalancer struct {
+	Policy string
+}
+
+// ApplyLbConfig to the envoy.Cluster, configured using the values in LoadBalancer.
+//
+// The type of envoy.Cluster.LBConfig is an interface with unexported methods, so
+// it is impossible to return a type which satisfies that interface. Instead we
+// apply config my modifying the envoy.Cluster.
+func (l LoadBalancer) ApplyToCluster(c *envoy.Cluster) error {
+	switch l.Policy {
+	case "":
+		return nil
+	case "least_request":
+		c.LbPolicy = envoy.Cluster_LEAST_REQUEST
+	case "round_robin":
+		c.LbPolicy = envoy.Cluster_ROUND_ROBIN
+	case "random":
+		c.LbPolicy = envoy.Cluster_RANDOM
+	default:
+		return fmt.Errorf("unsupported load balancer policy: %v", l.Policy)
+	}
+	return nil
 }
 
 func ParseUpstreamConfigNoDefaults(m map[string]interface{}) (UpstreamConfig, error) {

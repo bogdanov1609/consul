@@ -321,7 +321,10 @@ func (s *Server) makeAppCluster(cfgSnap *proxycfg.ConfigSnapshot, name, pathProt
 	return c, err
 }
 
-func (s *Server) makeUpstreamClusterForPreparedQuery(upstream structs.Upstream, cfgSnap *proxycfg.ConfigSnapshot) (*envoy.Cluster, error) {
+func (s *Server) makeUpstreamClusterForPreparedQuery(
+	upstream structs.Upstream,
+	cfgSnap *proxycfg.ConfigSnapshot,
+) (*envoy.Cluster, error) {
 	var c *envoy.Cluster
 	var err error
 
@@ -365,6 +368,9 @@ func (s *Server) makeUpstreamClusterForPreparedQuery(upstream structs.Upstream, 
 		}
 		if cfg.Protocol == "http2" || cfg.Protocol == "grpc" {
 			c.Http2ProtocolOptions = &envoycore.Http2ProtocolOptions{}
+		}
+		if err := cfg.LoadBalancer.ApplyToCluster(c); err != nil {
+			return nil, err
 		}
 	}
 
@@ -464,6 +470,9 @@ func (s *Server) makeUpstreamClustersForDiscoveryChain(
 			},
 			// Having an empty config enables outlier detection with default config.
 			OutlierDetection: &envoycluster.OutlierDetection{},
+		}
+		if err := cfg.LoadBalancer.ApplyToCluster(c); err != nil {
+			return nil, err
 		}
 
 		proto := cfg.Protocol
